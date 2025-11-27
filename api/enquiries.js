@@ -1,6 +1,11 @@
 // api/enquiries.js
-// Vercel Serverless Function for handling website enquiries.
-// Deployed at: /api/enquiries
+// Vercel Serverless Function for handling website enquiries and emailing them.
+
+// Import Resend for sending emails
+const { Resend } = require('resend');
+
+// Create Resend client using API key from environment variables
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Helper: safely get JSON body (works even if req.body isn't parsed)
 async function getJsonBody(req) {
@@ -116,7 +121,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Build entry object
+    // Build clean enquiry object
     const enquiry = {
       name: name.trim(),
       email: email.trim(),
@@ -127,16 +132,67 @@ module.exports = async (req, res) => {
       phone: phone ? String(phone).trim() : '',
       utm_source: utm_source ? String(utm_source).trim() : '',
       received_at: new Date().toISOString()
-    }
+    };
 
-    // --- PLACEHOLDER: store in DB or send email here ---
-    // Example:
-    // await db.insert('enquiries', enquiry);
-    // await sendEmail(enquiry);
-
-    // For now: log to Vercel logs so you can see it in the dashboard
+    // Log to Vercel logs
     console.log('New Nsagu enquiry:', enquiry);
 
+    // ---- SEND EMAIL TO YOUR GMAIL VIA RESEND ----
+    const toAddress = process.env.ENQUIRIES_TO;
+    const fromAddress = process.env.ENQUIRIES_FROM || 'onboarding@resend.dev';
+
+    if (!process.env.RESEND_API_KEY || !toAddress) {
+      console.warn('Email not sent: RESEND_API_KEY or ENQUIRIES_TO not configured.');
+    } else {
+      const subject = `New Nsagu Park enquiry – ${enquiry.role} – ${enquiry.name}`;
+
+      const textBody = `
+New Nsagu Industrial Park enquiry
+
+Name: ${enquiry.name}
+Email: ${enquiry.email}
+Organisation: ${enquiry.organisation || '-'}
+Role: ${enquiry.role}
+Phone: ${enquiry.phone || '-'}
+Source page: ${enquiry.source_page}
+UTM source: ${enquiry.utm_source || '-'}
+
+Message:
+${enquiry.message}
+
+Received at: ${enquiry.received_at}
+      `.trim();
+
+      const htmlBody = `
+        <h2>New Nsagu Industrial Park enquiry</h2>
+        <p><strong>Name:</strong> ${enquiry.name}</p>
+        <p><strong>Email:</strong> ${enquiry.email}</p>
+        <p><strong>Organisation:</strong> ${enquiry.organisation || '-'}</p>
+        <p><strong>Role:</strong> ${enquiry.role}</p>
+        <p><strong>Phone:</strong> ${enquiry.phone || '-'}</p>
+        <p><strong>Source page:</strong> ${enquiry.source_page}</p>
+        <p><strong>UTM source:</strong> ${enquiry.utm_source || '-'}</p>
+        <p><strong>Message:</strong></p>
+        <p>${enquiry.message.replace(/\n/g, '<br />')}</p>
+        <p><em>Received at: ${enquiry.received_at}</em></p>
+      `;
+
+      try {
+        const emailResult = await resend.emails.send({
+          from: fromAddress,
+          to: toAddress,
+          subject,
+          text: textBody,
+          html: htmlBody
+        });
+        console.log('Resend email result:', emailResult);
+      } catch (emailErr) {
+        console.error('Error sending enquiry email:', emailErr);
+        // We still respond ok so the user isn't blocked
+      }
+    }
+
+    // Response to browser
     return res.status(200).json({
       status: 'ok',
       message: 'Thank you. We have received your enquiry and will be in touch shortly.'
