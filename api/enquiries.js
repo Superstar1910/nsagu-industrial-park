@@ -75,7 +75,7 @@ module.exports = async (req, res) => {
     } = body || {};
 
     // Honeypot anti-spam: if filled, silently ignore but respond "ok"
-    if (honeypot && honeypot.trim() !== '') {
+    if (honeypot && typeof honeypot === 'string' && honeypot.trim() !== '') {
       console.log('Spam / bot submission detected (honeypot filled).');
       return res.status(200).json({ status: 'ok', message: 'Thanks.' });
     }
@@ -94,27 +94,23 @@ module.exports = async (req, res) => {
       errors.email = 'Valid email required.';
     }
 
-    // Message
-    if (
-      !message ||
-      typeof message !== 'string' ||
-      message.trim().length < 10
-    ) {
-      errors.message = 'Message is too short.';
+    // Message – just require something non-empty
+    if (!message || typeof message !== 'string' || message.trim().length === 0) {
+      errors.message = 'Message is required.';
     }
 
-    // Role
-    const allowedRoles = ['tenant', 'investor', 'partner', 'other'];
-    if (!role || !allowedRoles.includes(role)) {
-      errors.role = 'Invalid role.';
+    // Role – require non-empty string (no fixed list, so dropdown text is fine)
+    if (!role || typeof role !== 'string' || role.trim().length === 0) {
+      errors.role = 'Please select what you are interested in.';
     }
 
-    // Source page
+    // Source page – should be passed from the form as hidden field
     if (!source_page || typeof source_page !== 'string') {
       errors.source_page = 'Source page missing.';
     }
 
     if (Object.keys(errors).length > 0) {
+      console.warn('Validation errors in /api/enquiries:', errors);
       return res.status(400).json({
         status: 'error',
         errors
@@ -126,7 +122,7 @@ module.exports = async (req, res) => {
       name: name.trim(),
       email: email.trim(),
       organisation: organisation ? String(organisation).trim() : '',
-      role,
+      role: role.trim(),
       message: message.trim(),
       source_page: source_page.trim(),
       phone: phone ? String(phone).trim() : '',
@@ -142,7 +138,9 @@ module.exports = async (req, res) => {
     const fromAddress = process.env.ENQUIRIES_FROM || 'onboarding@resend.dev';
 
     if (!process.env.RESEND_API_KEY || !toAddress) {
-      console.warn('Email not sent: RESEND_API_KEY or ENQUIRIES_TO not configured.');
+      console.warn(
+        'Email not sent: RESEND_API_KEY or ENQUIRIES_TO not configured.'
+      );
     } else {
       const subject = `New Nsagu Park enquiry – ${enquiry.role} – ${enquiry.name}`;
 
@@ -195,7 +193,8 @@ Received at: ${enquiry.received_at}
     // Response to browser
     return res.status(200).json({
       status: 'ok',
-      message: 'Thank you. We have received your enquiry and will be in touch shortly.'
+      message:
+        'Thank you. We have received your enquiry and will be in touch shortly.'
     });
   } catch (err) {
     console.error('Enquiry handler error:', err);
