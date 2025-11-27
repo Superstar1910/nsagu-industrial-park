@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Nsagu Industrial Park – Contact</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- Navigation -->
+<header>
+  <div class="nav">
+    <div class="nav-left">
+      <div class="logo-mark">NI</div>
+      <div class="nav-title">Nsagu Industrial Park</div>
+    </div>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="about.html">About</a>
+      <a href="tenants.html">Tenants</a>
+      <a href="investors.html">Investors</a>
+      <a href="contact.html" class="nav-cta active">Enquire</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="section-last">
+    <div class="contact-grid">
+
+      <!-- Contact Info -->
+      <div>
+        <div class="section-eyebrow">Contact</div>
+        <h1 class="section-heading">Enquire About Space, Investment or Partnership</h1>
+
+        <p class="muted">
+          Fill out the form and our team will follow up with availability,
+          lease options, or investment information.
+        </p>
+
+        <p class="muted">
+          <strong>Email:</strong> info@example.com<br />
+          <strong>Phone/WhatsApp:</strong> +256 xxx xxx xxx<br />
+          <strong>Office:</strong> (Insert TPL / Oakstone office address)
+        </p>
+      </div>
+
+      <!-- Contact Form -->
+      <div class="card">
+        <form id="enquiry-form">
+
+          <!-- Hidden fields -->
+          <input type="hidden" name="source_page" value="contact" />
+          <div style="display:none;">
+            <label>Leave this field empty</label>
+            <input type="text" name="honeypot" />
+          </div>
+
+          <div class="form-group">
+            <label for="name">Name</label>
+            <input id="name" name="name" type="text" placeholder="Your name" required />
+          </div>
+
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" placeholder="you@example.com" required />
+          </div>
+
+          <div class="form-group">
+            <label for="organisation">Organisation</label>
+            <input id="organisation" name="organisation" type="text" placeholder="Company / Organisation" />
+          </div>
+
+          <div class="form-group">
+            <label for="phone">Phone / WhatsApp (optional)</label>
+            <input id="phone" name="phone" type="text" placeholder="+256..." />
+          </div>
+
+          <div class="form-group">
+            <label for="role">I am interested as a</label>
+            <select id="role" name="role" required>
+              <option value="tenant">Prospective Tenant</option>
+              <option value="investor">Investor / Lender</option>
+              <option value="partner">Strategic Partner</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="message">Message</label>
+            <textarea id="message" name="message" placeholder="Tell us about your needs, timelines and questions." required></textarea>
+          </div>
+
+          <button type="submit" class="btn-primary">Submit Enquiry</button>
+          <p id="form-status" class="muted"></p>
+        </form>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div>
+    <span>© Nsagu Industrial Park — A TPL &amp; Oakstone Capital Development</span>
+    <span><a href="contact.html">Contact</a></span>
+  </div>
+</footer>
+
+<!-- FORM SUBMISSION SCRIPT -->
+<script>
+  const form = document.getElementById('enquiry-form');
+  const statusEl = document.getElementById('form-status');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    statusEl.textContent = 'Sending...';
+
+    const formData = new FormData(form);
+
+    const payload = {
+      name: formData.get('name'),
+      email: formData.get('email'),
+      organisation: formData.get('organisation') || '',
+      role: formData.get('role'),
+      message: formData.get('message'),
+      source_page: formData.get('source_page'),
+      phone: formData.get('phone') || '',
+      utm_source: '',
+      honeypot: formData.get('honeypot') || ''
+    };
+
+    try {
+      const res = await fetch('/api/enquiries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+
+      if (data.status === 'ok') {
+        statusEl.textContent = data.message || 'Thank you! We will be in touch.';
+        form.reset();
+      } else {
+        statusEl.textContent = data.message || 'Please check your details and try again.';
+      }
+    } catch (error) {
+      console.error(error);
+      statusEl.textContent = 'Network error. Please try again.';
+    }
+  });
+</script>
+
+</body>
+</html>
